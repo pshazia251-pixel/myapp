@@ -105,10 +105,10 @@ export default function Home() {
                 Start Saving Today <FaArrowRight />
               </Link>
               <Link
-                href="/services"
-                className="bg-white text-primary border-2 border-primary px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors font-semibold text-lg"
+                href="/calculator"
+                className="bg-white text-primary border-2 border-primary px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors font-semibold text-lg inline-flex items-center justify-center gap-2"
               >
-                Our Services
+                Calculate Your Savings
               </Link>
             </div>
           </div>
