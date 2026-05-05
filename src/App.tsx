@@ -5,10 +5,11 @@ import { AddDevice } from './pages/AddDevice';
 import { DeviceWhatsApp } from './pages/DeviceWhatsApp';
 import { ChatView } from './pages/ChatView';
 import { SettingsPage } from './pages/SettingsPage';
+import { ApiSetup } from './pages/ApiSetup';
 import { mockDevices, mockChats } from './data/mockData';
 import type { VirtualDevice, Chat } from './types';
 
-type Page = 'dashboard' | 'device-detail' | 'add-device' | 'device-whatsapp' | 'chat-view' | 'settings';
+type Page = 'dashboard' | 'device-detail' | 'add-device' | 'device-whatsapp' | 'chat-view' | 'settings' | 'api-setup';
 
 export default function App() {
   const [devices, setDevices] = useState<VirtualDevice[]>(mockDevices);
@@ -35,7 +36,7 @@ export default function App() {
     if (activePage === 'chat-view') {
       setActiveChat(null);
       setActivePage('device-whatsapp');
-    } else if (activePage === 'device-whatsapp') {
+    } else if (activePage === 'device-whatsapp' || activePage === 'api-setup') {
       setActivePage('device-detail');
     } else {
       setSelectedDevice(null);
@@ -72,6 +73,23 @@ export default function App() {
     setSelectedDevice(updated);
   }, []);
 
+  const handleOpenApiSetup = useCallback((device: VirtualDevice) => {
+    setSelectedDevice(device);
+    setActivePage('api-setup');
+  }, []);
+
+  const handleDeviceStatusChange = useCallback((deviceId: string, status: VirtualDevice['status']) => {
+    setDevices(prev => prev.map(d => {
+      if (d.id !== deviceId) return d;
+      return {
+        ...d,
+        status,
+        whatsappStatus: status === 'online' ? 'active' as const : 'not_registered' as const,
+        signalStrength: status === 'online' ? 4 : 0,
+      };
+    }));
+  }, []);
+
   const renderPage = () => {
     switch (activePage) {
       case 'dashboard':
@@ -94,6 +112,7 @@ export default function App() {
             onToggleDevice={() => handleToggleDevice(selectedDevice.id)}
             onRemoveDevice={() => handleRemoveDevice(selectedDevice.id)}
             onUpdateDevice={handleUpdateDevice}
+            onOpenApiSetup={() => handleOpenApiSetup(selectedDevice)}
           />
         ) : null;
       case 'add-device':
@@ -129,6 +148,14 @@ export default function App() {
             onToggleDevice={handleToggleDevice}
           />
         );
+      case 'api-setup':
+        return selectedDevice ? (
+          <ApiSetup
+            device={selectedDevice}
+            onBack={handleBack}
+            onDeviceStatusChange={handleDeviceStatusChange}
+          />
+        ) : null;
       default:
         return null;
     }

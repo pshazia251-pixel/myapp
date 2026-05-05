@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   ArrowLeft, Smartphone, MapPin, Globe, Battery, Signal, Clock, Shield,
   MessageCircle, Power, Trash2, RefreshCw, Copy, Check,
-  Wifi, WifiOff, Edit2, Save, X, AlertTriangle
+  Wifi, WifiOff, Edit2, Save, X, AlertTriangle, Key
 } from 'lucide-react';
 import type { VirtualDevice } from '../types';
 
@@ -13,9 +13,10 @@ interface Props {
   onToggleDevice: () => void;
   onRemoveDevice: () => void;
   onUpdateDevice: (device: VirtualDevice) => void;
+  onOpenApiSetup: () => void;
 }
 
-export function DeviceDetail({ device, onBack, onOpenWhatsApp, onToggleDevice, onRemoveDevice, onUpdateDevice }: Props) {
+export function DeviceDetail({ device, onBack, onOpenWhatsApp, onToggleDevice, onRemoveDevice, onUpdateDevice, onOpenApiSetup }: Props) {
   const [editing, setEditing] = useState(false);
   const [proxyAddr, setProxyAddr] = useState(device.proxyAddress);
   const [proxyPort, setProxyPort] = useState(String(device.proxyPort));
@@ -76,6 +77,13 @@ export function DeviceDetail({ device, onBack, onOpenWhatsApp, onToggleDevice, o
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className="btn btn-secondary"
+            onClick={onOpenApiSetup}
+            style={{ fontSize: 13 }}
+          >
+            <Key size={16} /> API Setup
+          </button>
           <button
             className="btn btn-primary"
             onClick={onOpenWhatsApp}
