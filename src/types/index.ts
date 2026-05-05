@@ -1,18 +1,34 @@
-export interface WhatsAppAccount {
+export interface VirtualDevice {
   id: string;
   phoneNumber: string;
-  displayName: string;
+  label: string;
   avatar: string;
-  status: string;
-  deviceName: string;
-  deviceType: 'android' | 'iphone' | 'clone';
+  deviceModel: string;
+  osVersion: string;
   ipAddress: string;
-  proxyEnabled: boolean;
   proxyAddress: string;
-  isActive: boolean;
-  lastSeen: string;
-  unreadCount: number;
+  proxyPort: number;
+  proxyEnabled: boolean;
+  location: {
+    city: string;
+    country: string;
+    flag: string;
+    lat: number;
+    lng: number;
+  };
+  status: 'online' | 'offline' | 'connecting' | 'error';
+  whatsappStatus: 'active' | 'banned' | 'not_registered' | 'verifying';
   batteryLevel: number;
+  signalStrength: number;
+  uptime: number; // seconds
+  messagesTotal: number;
+  messagesToday: number;
+  contactsCount: number;
+  groupsCount: number;
+  lastActivity: string;
+  createdAt: string;
+  autoReconnect: boolean;
+  vpnProtocol: 'http' | 'socks5' | 'wireguard' | 'none';
 }
 
 export interface Contact {
@@ -48,34 +64,22 @@ export interface Chat {
   isArchived: boolean;
 }
 
-export interface StatusUpdate {
-  id: string;
-  contact: Contact;
-  media: string;
-  caption: string;
-  timestamp: string;
-  viewed: boolean;
-  type: 'image' | 'text' | 'video';
-  backgroundColor?: string;
+export interface DeviceStats {
+  totalDevices: number;
+  onlineDevices: number;
+  totalMessages: number;
+  messagesToday: number;
+  uniqueLocations: number;
+  avgUptime: number;
+  bannedDevices: number;
+  errorDevices: number;
 }
 
-export interface CallRecord {
+export interface ActivityLog {
   id: string;
-  contact: Contact;
-  type: 'voice' | 'video';
-  direction: 'incoming' | 'outgoing' | 'missed';
+  deviceId: string;
+  deviceLabel: string;
+  action: string;
   timestamp: string;
-  duration: number;
-}
-
-export interface DeviceSession {
-  id: string;
-  accountId: string;
-  deviceName: string;
-  deviceType: 'android' | 'iphone' | 'web' | 'desktop';
-  ipAddress: string;
-  location: string;
-  lastActive: string;
-  isCurrentDevice: boolean;
-  browser?: string;
+  type: 'info' | 'warning' | 'error' | 'success';
 }

@@ -1,87 +1,142 @@
 import { useState, useCallback } from 'react';
-import { AccountSidebar } from './components/AccountSidebar';
-import { BottomNav } from './components/BottomNav';
-import { ChatsPage } from './pages/ChatsPage';
-import { StatusPage } from './pages/StatusPage';
-import { CallsPage } from './pages/CallsPage';
-import { DevicesPage } from './pages/DevicesPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { CloneDevicePage } from './pages/CloneDevicePage';
+import { DeviceDashboard } from './pages/DeviceDashboard';
+import { DeviceDetail } from './pages/DeviceDetail';
+import { AddDevice } from './pages/AddDevice';
+import { DeviceWhatsApp } from './pages/DeviceWhatsApp';
 import { ChatView } from './pages/ChatView';
-import { mockAccounts, mockChats } from './data/mockData';
-import type { WhatsAppAccount, Chat } from './types';
+import { SettingsPage } from './pages/SettingsPage';
+import { mockDevices, mockChats } from './data/mockData';
+import type { VirtualDevice, Chat } from './types';
 
-type Page = 'chats' | 'status' | 'calls' | 'devices' | 'settings' | 'clone' | 'chat-view';
+type Page = 'dashboard' | 'device-detail' | 'add-device' | 'device-whatsapp' | 'chat-view' | 'settings';
 
 export default function App() {
-  const [accounts, setAccounts] = useState<WhatsAppAccount[]>(mockAccounts);
-  const [activeAccountId, setActiveAccountId] = useState(mockAccounts[0]!.id);
-  const [activePage, setActivePage] = useState<Page>('chats');
+  const [devices, setDevices] = useState<VirtualDevice[]>(mockDevices);
+  const [activePage, setActivePage] = useState<Page>('dashboard');
+  const [selectedDevice, setSelectedDevice] = useState<VirtualDevice | null>(null);
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  const activeAccount = accounts.find(a => a.id === activeAccountId) ?? accounts[0]!;
+  const handleSelectDevice = useCallback((device: VirtualDevice) => {
+    setSelectedDevice(device);
+    setActivePage('device-detail');
+  }, []);
+
+  const handleOpenWhatsApp = useCallback((device: VirtualDevice) => {
+    setSelectedDevice(device);
+    setActivePage('device-whatsapp');
+  }, []);
 
   const handleSelectChat = useCallback((chat: Chat) => {
     setActiveChat(chat);
     setActivePage('chat-view');
   }, []);
 
-  const handleBackFromChat = useCallback(() => {
-    setActiveChat(null);
-    setActivePage('chats');
+  const handleBack = useCallback(() => {
+    if (activePage === 'chat-view') {
+      setActiveChat(null);
+      setActivePage('device-whatsapp');
+    } else if (activePage === 'device-whatsapp') {
+      setActivePage('device-detail');
+    } else {
+      setSelectedDevice(null);
+      setActivePage('dashboard');
+    }
+  }, [activePage]);
+
+  const handleToggleDevice = useCallback((deviceId: string) => {
+    setDevices(prev => prev.map(d => {
+      if (d.id !== deviceId) return d;
+      const newStatus = d.status === 'online' ? 'offline' : 'online';
+      return {
+        ...d,
+        status: newStatus,
+        signalStrength: newStatus === 'online' ? 4 : 0,
+        uptime: newStatus === 'online' ? 0 : d.uptime,
+      };
+    }));
   }, []);
 
-  const handleToggleAccount = useCallback((accountId: string) => {
-    setAccounts(prev => prev.map(a =>
-      a.id === accountId ? { ...a, isActive: !a.isActive } : a
-    ));
+  const handleRemoveDevice = useCallback((deviceId: string) => {
+    setDevices(prev => prev.filter(d => d.id !== deviceId));
+    setSelectedDevice(null);
+    setActivePage('dashboard');
+  }, []);
+
+  const handleAddDevice = useCallback((device: VirtualDevice) => {
+    setDevices(prev => [...prev, device]);
+    setActivePage('dashboard');
+  }, []);
+
+  const handleUpdateDevice = useCallback((updated: VirtualDevice) => {
+    setDevices(prev => prev.map(d => d.id === updated.id ? updated : d));
+    setSelectedDevice(updated);
   }, []);
 
   const renderPage = () => {
     switch (activePage) {
-      case 'chats':
-        return <ChatsPage account={activeAccount} chats={mockChats} onSelectChat={handleSelectChat} />;
+      case 'dashboard':
+        return (
+          <DeviceDashboard
+            devices={devices}
+            onSelectDevice={handleSelectDevice}
+            onOpenWhatsApp={handleOpenWhatsApp}
+            onToggleDevice={handleToggleDevice}
+            onAddDevice={() => setActivePage('add-device')}
+            onOpenSettings={() => setActivePage('settings')}
+          />
+        );
+      case 'device-detail':
+        return selectedDevice ? (
+          <DeviceDetail
+            device={selectedDevice}
+            onBack={handleBack}
+            onOpenWhatsApp={() => handleOpenWhatsApp(selectedDevice)}
+            onToggleDevice={() => handleToggleDevice(selectedDevice.id)}
+            onRemoveDevice={() => handleRemoveDevice(selectedDevice.id)}
+            onUpdateDevice={handleUpdateDevice}
+          />
+        ) : null;
+      case 'add-device':
+        return (
+          <AddDevice
+            onBack={handleBack}
+            onAddDevice={handleAddDevice}
+            existingCount={devices.length}
+          />
+        );
+      case 'device-whatsapp':
+        return selectedDevice ? (
+          <DeviceWhatsApp
+            device={selectedDevice}
+            chats={mockChats}
+            onBack={handleBack}
+            onSelectChat={handleSelectChat}
+          />
+        ) : null;
       case 'chat-view':
-        return activeChat ? <ChatView chat={activeChat} onBack={handleBackFromChat} /> : null;
-      case 'status':
-        return <StatusPage account={activeAccount} />;
-      case 'calls':
-        return <CallsPage account={activeAccount} />;
-      case 'devices':
-        return <DevicesPage account={activeAccount} />;
+        return activeChat && selectedDevice ? (
+          <ChatView
+            chat={activeChat}
+            device={selectedDevice}
+            onBack={handleBack}
+          />
+        ) : null;
       case 'settings':
-        return <SettingsPage account={activeAccount} accounts={accounts} onToggleAccount={handleToggleAccount} />;
-      case 'clone':
-        return <CloneDevicePage account={activeAccount} />;
+        return (
+          <SettingsPage
+            devices={devices}
+            onBack={handleBack}
+            onToggleDevice={handleToggleDevice}
+          />
+        );
       default:
-        return <ChatsPage account={activeAccount} chats={mockChats} onSelectChat={handleSelectChat} />;
+        return null;
     }
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
-      <AccountSidebar
-        accounts={accounts}
-        activeAccountId={activeAccountId}
-        onSelectAccount={setActiveAccountId}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          {renderPage()}
-        </div>
-        <BottomNav
-          activePage={activePage}
-          onNavigate={(page) => {
-            if (page !== 'chat-view') {
-              setActiveChat(null);
-            }
-            setActivePage(page as Page);
-          }}
-        />
-      </div>
+    <div style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
+      {renderPage()}
     </div>
   );
 }

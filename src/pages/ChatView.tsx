@@ -1,25 +1,23 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Phone, Video, MoreVertical, Send, Smile, Paperclip, Mic, Check, CheckCheck } from 'lucide-react';
-import type { Chat, Message } from '../types';
+import {
+  ArrowLeft, Phone, Video, MoreVertical, Smile, Paperclip, Mic, Send,
+  Check, CheckCheck
+} from 'lucide-react';
+import type { Chat, Message, VirtualDevice } from '../types';
 
 interface Props {
   chat: Chat;
+  device: VirtualDevice;
   onBack: () => void;
 }
 
-function formatTime(ts: string): string {
-  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-export function ChatView({ chat, onBack }: Props) {
+export function ChatView({ chat, device, onBack }: Props) {
   const [messages, setMessages] = useState<Message[]>(chat.messages);
   const [input, setInput] = useState('');
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSend = () => {
@@ -45,115 +43,125 @@ export function ChatView({ chat, onBack }: Props) {
     }, 2500);
   };
 
-  const renderTick = (status: string) => {
-    if (status === 'read') return <CheckCheck size={14} color="var(--wa-blue)" />;
-    if (status === 'delivered') return <CheckCheck size={14} color="var(--wa-text-muted)" />;
-    return <Check size={14} color="var(--wa-text-muted)" />;
+  const formatTime = (ts: string) => {
+    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const groupByDate = (msgs: Message[]) => {
+    const groups: Array<{ date: string; messages: Message[] }> = [];
+    let currentDate = '';
+    msgs.forEach(msg => {
+      const date = new Date(msg.timestamp).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+      if (date !== currentDate) {
+        currentDate = date;
+        groups.push({ date, messages: [] });
+      }
+      groups[groups.length - 1]!.messages.push(msg);
+    });
+    return groups;
+  };
+
+  const grouped = groupByDate(messages);
+
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--wa-bg-chat)' }}>
+    <div style={{
+      height: '100vh', display: 'flex', flexDirection: 'column',
+      background: 'var(--wa-bg-chat)',
+    }}>
       {/* Header */}
       <div style={{
-        padding: '8px 16px',
         background: 'var(--wa-header)',
+        padding: '8px 12px',
+        display: 'flex', alignItems: 'center', gap: 10,
         borderBottom: '1px solid var(--wa-border)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
       }}>
-        <button onClick={onBack} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--wa-text-secondary)' }}>
-          <ArrowLeft size={22} />
+        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--wa-text)', padding: 0 }}>
+          <ArrowLeft size={20} />
         </button>
         <div style={{ position: 'relative' }}>
-          <img src={chat.contact.avatar} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
-          {chat.contact.isOnline && <div className="online-dot" style={{ width: 10, height: 10 }} />}
+          <img src={chat.contact.avatar} alt="" className="avatar avatar-sm" />
+          {chat.contact.isOnline && <div className="online-dot" style={{ width: 8, height: 8 }} />}
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 600, fontSize: 15 }}>{chat.contact.name}</div>
-          <div style={{ fontSize: 12, color: 'var(--wa-text-muted)' }}>
+          <div style={{ fontSize: 11, color: 'var(--wa-text-muted)' }}>
             {chat.contact.isOnline ? 'online' : `last seen ${formatTime(chat.contact.lastSeen)}`}
+            {' • '}{device.location.flag} {device.ipAddress}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 16 }}>
-          <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--wa-text-secondary)' }}><Video size={20} /></button>
-          <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--wa-text-secondary)' }}><Phone size={20} /></button>
-          <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--wa-text-secondary)' }}><MoreVertical size={20} /></button>
+          <Video size={18} color="var(--wa-text-secondary)" style={{ cursor: 'pointer' }} />
+          <Phone size={18} color="var(--wa-text-secondary)" style={{ cursor: 'pointer' }} />
+          <MoreVertical size={18} color="var(--wa-text-secondary)" style={{ cursor: 'pointer' }} />
         </div>
       </div>
 
       {/* Messages */}
-      <div
-        ref={scrollRef}
-        style={{
-          flex: 1,
-          overflow: 'auto',
-          padding: '16px',
-          backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'200\' height=\'200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cdefs%3E%3Cpattern id=\'p\' width=\'40\' height=\'40\' patternUnits=\'userSpaceOnUse\'%3E%3Ccircle cx=\'20\' cy=\'20\' r=\'1.5\' fill=\'%23ffffff08\'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=\'100%25\' height=\'100%25\' fill=\'url(%23p)\'/%3E%3C/svg%3E")',
-        }}
-      >
-        {messages.map((msg, i) => {
-          const showDate = i === 0 || new Date(messages[i - 1]!.timestamp).toDateString() !== new Date(msg.timestamp).toDateString();
-          return (
-            <div key={msg.id}>
-              {showDate && (
-                <div style={{ textAlign: 'center', margin: '16px 0' }}>
-                  <span style={{
-                    background: 'var(--wa-bg-panel)',
-                    padding: '4px 12px',
-                    borderRadius: 8,
-                    fontSize: 12,
-                    color: 'var(--wa-text-muted)',
-                  }}>
-                    {new Date(msg.timestamp).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
-                  </span>
-                </div>
-              )}
-              <div style={{
-                display: 'flex',
-                justifyContent: msg.isOutgoing ? 'flex-end' : 'flex-start',
-                marginBottom: 4,
+      <div style={{ flex: 1, overflow: 'auto', padding: '8px 16px' }}>
+        {grouped.map((group, gi) => (
+          <div key={gi}>
+            <div style={{
+              display: 'flex', justifyContent: 'center', margin: '12px 0',
+            }}>
+              <span style={{
+                padding: '4px 14px', borderRadius: 8,
+                background: 'var(--wa-bg-panel)', fontSize: 12, color: 'var(--wa-text-muted)',
               }}>
+                {group.date}
+              </span>
+            </div>
+            {group.messages.map(msg => (
+              <div
+                key={msg.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: msg.isOutgoing ? 'flex-end' : 'flex-start',
+                  marginBottom: 3,
+                }}
+              >
                 <div style={{
-                  maxWidth: '75%',
-                  padding: '8px 12px',
-                  borderRadius: msg.isOutgoing ? '10px 10px 2px 10px' : '10px 10px 10px 2px',
+                  maxWidth: '65%',
+                  padding: '6px 10px 4px',
+                  borderRadius: msg.isOutgoing ? '8px 0 8px 8px' : '0 8px 8px 8px',
                   background: msg.isOutgoing ? 'var(--wa-bg-message-out)' : 'var(--wa-bg-message-in)',
-                  position: 'relative',
                 }}>
                   <div style={{ fontSize: 14, lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                     {msg.text}
                   </div>
                   <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    gap: 4,
-                    marginTop: 2,
+                    display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+                    gap: 4, marginTop: 2,
                   }}>
-                    <span style={{ fontSize: 11, color: 'var(--wa-text-muted)' }}>{formatTime(msg.timestamp)}</span>
-                    {msg.isOutgoing && renderTick(msg.status)}
+                    <span style={{ fontSize: 10, color: 'var(--wa-text-muted)' }}>
+                      {formatTime(msg.timestamp)}
+                    </span>
+                    {msg.isOutgoing && (
+                      msg.status === 'read' ?
+                        <CheckCheck size={14} color="var(--wa-blue)" /> :
+                      msg.status === 'delivered' ?
+                        <CheckCheck size={14} color="var(--wa-text-muted)" /> :
+                        <Check size={14} color="var(--wa-text-muted)" />
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            ))}
+          </div>
+        ))}
+        <div ref={bottomRef} />
       </div>
 
       {/* Input */}
       <div style={{
-        padding: '8px 16px',
         background: 'var(--wa-header)',
+        padding: '8px 12px',
+        display: 'flex', alignItems: 'center', gap: 8,
         borderTop: '1px solid var(--wa-border)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
       }}>
-        <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--wa-text-secondary)' }}>
+        <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--wa-text-secondary)', padding: 4 }}>
           <Smile size={22} />
         </button>
-        <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--wa-text-secondary)' }}>
+        <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--wa-text-secondary)', padding: 4 }}>
           <Paperclip size={22} />
         </button>
         <input
@@ -162,18 +170,26 @@ export function ChatView({ chat, onBack }: Props) {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
-          style={{ flex: 1, borderRadius: 20 }}
+          style={{ borderRadius: 20, flex: 1 }}
         />
         {input.trim() ? (
           <button
             onClick={handleSend}
-            style={{ background: 'var(--wa-teal)', border: 'none', cursor: 'pointer', color: 'white', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{
+              width: 40, height: 40, borderRadius: '50%',
+              background: 'var(--wa-teal)', border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
           >
-            <Send size={18} />
+            <Send size={18} color="white" />
           </button>
         ) : (
-          <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--wa-text-secondary)' }}>
-            <Mic size={22} />
+          <button style={{
+            width: 40, height: 40, borderRadius: '50%',
+            background: 'var(--wa-teal)', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Mic size={18} color="white" />
           </button>
         )}
       </div>
